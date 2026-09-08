@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+.env
+.env*.local
+*.db
+*.db-journal
+coverage
+playwright-report
+test-results
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+public/uploads/*
+!public/uploads/.gitkeep
