@@ -1,0 +1,207 @@
+// Smart Helpdesk Ticketing Solution — SIH25195 (Ministry of Power)
+// SQLite for local demo, Postgres for deployment. Only the datasource block changes.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------- enums
+// SQLite has no native enums, so these are string columns validated by Zod
+// at every API boundary. The TS union types live in lib/constants.ts.
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("EMPLOYEE") // EMPLOYEE | AGENT | ADMIN
+  department   String? // IT_INFRA | APPLICATIONS | NETWORK_OPS | SECURITY | GENERAL
+  employeeCode String?  @unique
+  phone        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  createdTickets  Ticket[]       @relation("TicketCreator")
+  assignedTickets Ticket[]       @relation("TicketAssignee")
+  comments        Comment[]
+  events          TicketEvent[]
+  attachments     Attachment[]
+  kbArticles      KbArticle[]
+  routingRules    RoutingRule[]  @relation("RuleAssignee")
+
+  @@index([role])
+  @@index([department])
+}
+
+model Ticket {
+  id           String @id @default(cuid())
+  ticketNumber String @unique // MOP-2026-00042
+
+  title       String
+  description String
+  category    String // HARDWARE | SOFTWARE | NETWORK | ACCESS | EMAIL | SAP_ERP | SECURITY | OTHER
+  priority    String @default("MEDIUM") // LOW | MEDIUM | HIGH | CRITICAL
+  status      String @default("OPEN") // OPEN | IN_PROGRESS | ON_HOLD | RESOLVED | CLOSED | REOPENED
+  channel     String @default("WEB") // WEB | EMAIL | PHONE | WALK_IN
+  department  String @default("GENERAL")
+
+  createdById  String
+  createdBy    User    @relation("TicketCreator", fields: [createdById], references: [id])
+  assignedToId String?
+  assignedTo   User?   @relation("TicketAssignee", fields: [assignedToId], references: [id])
+
+  // --- SLA tracking
+  slaPolicyId        String?
+  slaPolicy          SlaPolicy? @relation(fields: [slaPolicyId], references: [id])
+  firstResponseDueAt DateTime?
+  resolutionDueAt    DateTime?
+  firstRespondedAt   DateTime?
+  slaBreached        Boolean    @default(false)
+  // Total minutes spent in ON_HOLD; credited back to deadlines.
+  holdMinutes        Int        @default(0)
+  onHoldSince        DateTime?
+
+  // --- automation metadata
+  autoClassified       Boolean @default(false)
+  classifierConfidence Float?
+  autoRouted           Boolean @default(false)
+  matchedRuleId        String?
+
+  resolvedAt DateTime?
+  closedAt   DateTime?
+
+  satisfactionRating  Int? // 1-5
+  satisfactionComment String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  comments    Comment[]
+  attachments Attachment[]
+  events      TicketEvent[]
+
+  @@index([status])
+  @@index([priority])
+  @@index([category])
+  @@index([createdById])
+  @@index([assignedToId])
+  @@index([department])
+  @@index([createdAt])
+  @@index([slaBreached])
+}
+
+model Comment {
+  id         String   @id @default(cuid())
+  ticketId   String
+  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id])
+  body       String
+  // Internal worknotes are agent/admin-only. Filtering this is a security
+  // boundary enforced server-side, never in the client.
+  isInternal Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+model Attachment {
+  id           String   @id @default(cuid())
+  ticketId     String
+  ticket       Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  filename     String
+  mimeType     String
+  sizeBytes    Int
+  storagePath  String
+  uploadedById String
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now())
+
+  @@index([ticketId])
+}
+
+// Append-only audit trail. Never updated, never deleted — this is what makes
+// the system defensible for a government IT department.
+model TicketEvent {
+  id        String   @id @default(cuid())
+  ticketId  String
+  ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  type      String // CREATED | ASSIGNED | STATUS_CHANGED | ... see lib/constants.ts
+  fromValue String?
+  toValue   String?
+  metadata  String? // JSON string
+  createdAt DateTime @default(now())
+
+  @@index([ticketId])
+  @@index([type])
+}
+
+model SlaPolicy {
+  id                String   @id @default(cuid())
+  name              String
+  priority          String   @unique // one active policy per priority level
+  firstResponseMins Int
+  resolutionMins    Int
+  businessHoursOnly Boolean  @default(true)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  tickets Ticket[]
+}
+
+model RoutingRule {
+  id       String @id @default(cuid())
+  name     String
+  // Lower number = evaluated first. First match wins.
+  priority Int    @default(100)
+
+  matchCategory String?
+  matchKeywords String  @default("") // comma-separated, case-insensitive
+  matchPriority String?
+
+  assignDepartment String
+  assignToUserId   String?
+  assignTo         User?   @relation("RuleAssignee", fields: [assignToUserId], references: [id])
+  setPriority      String?
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([priority])
+}
+
+model KbArticle {
+  id       String @id @default(cuid())
+  slug     String @unique
+  title    String
+  body     String // markdown
+  category String
+  tags     String @default("") // comma-separated
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
+  isPublished     Boolean @default(false)
+  viewCount       Int     @default(0)
+  helpfulCount    Int     @default(0)
+  notHelpfulCount Int     @default(0)
+  // Incremented when a user opens this article from the ticket-form
+  // suggestion widget and then abandons the draft — our deflection metric.
+  deflectionCount Int     @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([isPublished])
+}
