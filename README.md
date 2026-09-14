@@ -283,6 +283,7 @@ docs/
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Data model, automation internals, request lifecycle |
 | [`docs/SIH_PRESENTATION.md`](docs/SIH_PRESENTATION.md) | Problem, solution, USP, impact, scalability |
 | [`SPEC.md`](SPEC.md) | Full functional specification |
+| [`docs/DESIGN_PROMPTS.md`](docs/DESIGN_PROMPTS.md) | Ready-to-paste prompts for the submission deck, diagrams and poster |
 
 ---
 
