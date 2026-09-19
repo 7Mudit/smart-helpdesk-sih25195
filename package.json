@@ -5,12 +5,12 @@
   "description": "Smart Helpdesk Ticketing Solution for IT Services \u2014 SIH25195, Ministry of Power",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "node scripts/set-db-provider.mjs && prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "setup": "node scripts/ensure-env.mjs && prisma generate && prisma db push --skip-generate && tsx prisma/seed.ts",
-    "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts",
+    "setup": "node scripts/ensure-env.mjs && node scripts/set-db-provider.mjs && prisma generate && prisma db push --skip-generate && tsx prisma/seed.ts",
+    "db:push": "node scripts/set-db-provider.mjs && prisma db push",
+    "db:seed": "node scripts/set-db-provider.mjs && prisma generate && tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:reset": "rm -f prisma/dev.db && npm run setup",
     "test": "vitest run",
@@ -18,7 +18,7 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
-    "predev": "node scripts/ensure-env.mjs"
+    "predev": "node scripts/ensure-env.mjs && node scripts/set-db-provider.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",
