@@ -242,8 +242,10 @@ DATABASE_URL="<neon-url>" npm run db:seed
 ```
 
 ### 5. SLA sweep (optional)
-`vercel.json` schedules `/api/cron/sla-sweep` hourly to detect breaches and escalate. The
-endpoint is idempotent, so running it repeatedly is safe.
+`vercel.json` schedules `/api/cron/sla-sweep` daily to detect breaches and escalate — Vercel's
+free tier allows one cron run per day. On a paid plan, or any other scheduler, run it hourly for
+tighter escalation. The endpoint is idempotent, so running it repeatedly is safe, and an admin
+can trigger it by hand at any time.
 
 ---
 

@@ -2,7 +2,8 @@ node_modules
 .next
 out
 .env
-.env*.local
+.env.*
+!.env.example
 *.db
 *.db-journal
 coverage
@@ -13,3 +14,5 @@ test-results
 next-env.d.ts
 public/uploads/*
 !public/uploads/.gitkeep
+.vercel
+.env*
