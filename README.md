@@ -7,6 +7,10 @@ A production-grade IT service desk that replaces phone calls, emails and walk-in
 tracked system — and, critically, **triages tickets automatically** so no human coordinator sits
 in the middle of the queue.
 
+### ▶ [Live demo — smart-helpdesk-sih25195.vercel.app](https://smart-helpdesk-sih25195.vercel.app)
+
+The login page has one-click sign-in for all three roles; no credentials to type.
+
 ---
 
 ## Quick start
