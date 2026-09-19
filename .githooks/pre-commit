@@ -1,0 +1,14 @@
+#!/bin/sh
+# Keep the committed Prisma provider at sqlite, the local default.
+#
+# Deploy and seed steps flip it to postgresql via scripts/set-db-provider.mjs,
+# and it is easy to commit that by accident — which would hand a fresh clone a
+# provider its DATABASE_URL does not match. The build rewrites it either way,
+# so the checked-in value should simply reflect what `npm run dev` uses.
+if git diff --cached --name-only | grep -q '^prisma/schema.prisma$'; then
+  if git show ":prisma/schema.prisma" | grep -q 'provider = "postgresql"'; then
+    echo "pre-commit: normalising prisma provider to sqlite"
+    node scripts/set-db-provider.mjs >/dev/null 2>&1
+    git add prisma/schema.prisma
+  fi
+fi
